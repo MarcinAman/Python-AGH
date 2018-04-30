@@ -50,7 +50,7 @@ def calculate_onp(expression, values):
 
     while len(expression) > 0:
         if expression[0] in ['0', '1']:
-            stack.append(expression[0])
+            stack.append(int(expression[0]))
         else:
             if expression[0] == '~':
                 top = not bool(stack.pop())
@@ -58,7 +58,7 @@ def calculate_onp(expression, values):
             else:
                 e1 = int(stack.pop())
                 e2 = int(stack.pop())
-                stack.append(operators[expression[0]](e1, e2))
+                stack.append(operators[expression[0]](e2, e1))
 
         del expression[0]
 
@@ -71,8 +71,92 @@ def is_associative(tkn, associativity_type):
     return True
 
 
+def concat(s1, s2):
+    w = ""
+    lz = 0
+    for z1, z2 in zip(s1, s2):
+        if z1 == z2:
+            w += z1
+        else:
+            lz += 1
+            w += "_"
+
+    if lz == 1:
+        return w
+
+    return False
+
+
+def reduce_(s):  # s = set
+    result = set()
+    b2 = False
+
+    for e1 in s:
+        b1 = False
+        for e2 in s:
+            v = concat(e1, e2)
+            if v:
+                result.add(v)
+                b1 = b2 = True
+
+        if not b1:
+            result.add(e1)
+    if b2:
+        return reduce_(result)
+
+    return result
+
+
+def expression_to_string(s):
+    result2 = ""
+    for e1 in s:
+        result = ""
+        for i in range(0, len(e1)):
+            if e1[i] == '_':
+                continue
+            if e1[i] == '0':
+                result += '~'
+            result += ascii_lowercase[i] + "&"
+
+        result2 += '(' + result[:-1] + ')|'
+
+    if result2 == '()|':
+        return 'T'
+
+    return result2[:-1]
+
+
+def filter_double_negations(expression):
+    filtered_expression = ''
+    a = 0
+    while a < len(expression)-1:
+        if expression[a] == '~' and expression[a + 1] == '~':
+            a += 1
+            pass
+        else:
+            filtered_expression += expression[a]
+        a += 1
+
+    if expression[-2] == '~' and expression[-1] == '~':
+        return filtered_expression
+    return filtered_expression + expression[-1]
+
+# def reduce_xor(expression):
+#     expressions_list = expression.split('|')
+#
+
+def reduce_logical_expression(expression):
+    expression_object = Expression(expression)
+
+    if not expression_object.check_expression():
+        return 'ERROR'
+
+    return expression_object.generate_general_from()
+
+
 class Expression:
     def __init__(self, expression):
+        self.general_form = ''
         self.correctSigns = '~^&|/>()TF' + ascii_lowercase
         self.expression = expression.replace(' ', '')
         self.operators = {'~': (4, 1), '^': (3, 2), '&': (2, 2), '|': (2, 2), '/': (2, 2),
@@ -130,14 +214,6 @@ class Expression:
 
         return self.check_if_signs_are_correct(expression) and self.check_if_brackets_are_correct(expression)
 
-    def bal(self, w, op):
-        line = 0
-        for i in range(len(w) - 1, 0, -1):
-            if w[i] == ")": line -= 1
-            if w[i] == "(": line += 1
-            if w[i] in op and line == 0: return i
-        return -1
-
     def convert_to_onp(self, expression=''):
         if not expression:
             expression = self.expression
@@ -169,8 +245,31 @@ class Expression:
 
         return functools.reduce(lambda x, y: x + y, onp)
 
+    def generate_general_from(self, expression=''):
+        if not expression:
+            expression = self.expression
+
+        n = len(get_variables(expression))
+        correct_binaries = []
+        generator = generate_binary(n)
+        current_expression = self.convert_to_onp(expression)
+        # print(current_expression)
+
+        while True:
+            try:
+                x = generator.__next__()
+                # print(str(calculate_onp(current_expression,x)) + '  ' + x)
+                if calculate_onp(current_expression, x):
+                    correct_binaries.append(x)
+            except:
+                break
+
+        set2 = reduce_(correct_binaries)
+        self.general_form = expression_to_string(set2)
+
+        return self.general_form
+
 
 if __name__ == '__main__':
-    print(bool('1'))
-    print(bool('0'))
-    print(bool(1) and bool(0))
+    exp = '(a&~b)|(~a&b)'
+    print(exp.split('|'))

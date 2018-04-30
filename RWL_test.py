@@ -14,7 +14,7 @@ class CheckingValues(unittest.TestCase):
         self.assertEqual(xd.check_if_brackets_are_correct(), False)
         xd.expression = ')))((('
         self.assertEqual(xd.check_if_brackets_are_correct(), False)
-        self.assertEqual(xd.check_if_brackets_are_correct('ab)|~(b&c&~'),False)
+        self.assertEqual(xd.check_if_brackets_are_correct('ab)|~(b&c&~'), False)
 
     def test_signs(self):
         xd = RWL.Expression('')
@@ -45,6 +45,22 @@ class CheckingValues(unittest.TestCase):
         self.assertEqual(RWL.calculate_onp(some_object.convert_to_onp('a&b&c&d|e|p'), '111100'), True)
         self.assertEqual(RWL.calculate_onp(some_object.convert_to_onp('a&b&c&d|e|p'), '101100'), False)
         self.assertEqual(RWL.calculate_onp(some_object.convert_to_onp('~(a&b)|~(b&c)'), '010'), True)
+        self.assertEqual(RWL.calculate_onp('a~b~|~', '00'), False)
+        self.assertEqual(RWL.calculate_onp('a~b~|~', '01'), False)
+        self.assertEqual(RWL.calculate_onp('a~b~|~', '10'), False)
+        self.assertEqual(RWL.calculate_onp('a~b~|~', '11'), True)
+
+    def test_reduce(self):
+        self.assertEqual(RWL.reduce_logical_expression('a<(b&c)'), 'ERROR')
+        # self.assertEqual(RWL.reduce_logical_expression('(a|b)|(c|a|b)'), '(a)|(b)|(c)')
+        self.assertEqual(RWL.reduce_logical_expression('~(~a|~b)'), '(a&b)')
+        self.assertEqual(RWL.reduce_logical_expression('~(~a)'), '(a)')
+        self.assertEqual(RWL.reduce_logical_expression('(p/q)/(p/q)'), '(a&b)')
+        # self.assertEqual(RWL.reduce_logical_expression('(a&~b)|(~a&b)'), '(a^b)')
+        self.assertEqual(RWL.reduce_logical_expression('a|~a&(b|~b)'), 'T')
+
+    def test_some(self):
+        self.assertEqual(RWL.calculate_onp('a~b~|~', '00'), False)
 
 
 if __name__ == '__main__':
