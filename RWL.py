@@ -39,8 +39,36 @@ def get_variables(expression):
 
 
 def calculate_onp(expression, values):
-    zipped_list = zip(get_variables(expression), values.split(''))
-    expression = map(lambda x: replace_mapping(zipped_list, x), expression)
+    zipped_list = list(zip(get_variables(expression), list(values)))
+    expression = list(map(lambda x: replace_mapping(zipped_list, x), expression))
+
+    operators = {'^': lambda x, y: bool(x) ^ bool(y), '&': lambda x, y: bool(x) and bool(y),
+                 '|': lambda x, y: bool(x) or bool(y), '/': lambda x, y: not (bool(x) and bool(y)),
+                 '>': lambda x, y: not bool(x) or bool(y)}
+
+    stack = []
+
+    while len(expression) > 0:
+        if expression[0] in ['0', '1']:
+            stack.append(expression[0])
+        else:
+            if expression[0] == '~':
+                top = not bool(stack.pop())
+                stack.append(top)
+            else:
+                e1 = int(stack.pop())
+                e2 = int(stack.pop())
+                stack.append(operators[expression[0]](e1, e2))
+
+        del expression[0]
+
+    return stack[0]
+
+
+def is_associative(tkn, associativity_type):
+    if tkn == '>' and associativity_type == 'r':  # because only in case of > it matters.
+        return False
+    return True
 
 
 class Expression:
@@ -114,34 +142,35 @@ class Expression:
         if not expression:
             expression = self.expression
 
-        while len(expression) >= 2 and expression[0] == '(' and expression[-1] == ')' and self.check_expression(
-                expression):
-            expression = expression[1:-1]
+        stack = []
+        onp = []
 
-        if expression[0] == '~':
-            return self.convert_to_onp(expression[1:]) + expression[0]
+        for tkn in expression:
+            if tkn in self.operators:
+                while len(stack) > 0 and stack[-1] in self.operators:
+                    if (is_associative(tkn, 'l') and (self.operators[tkn][0] - self.operators[stack[-1]][0]) <= 0) \
+                            or (
+                            is_associative(tkn, 'r') and (self.operators[tkn][0] - self.operators[stack[-1]][0]) < 0):
+                        onp.append(stack.pop())
+                        continue
+                    break
+                stack.append(tkn)
+            elif tkn == '(':
+                stack.append(tkn)
+            elif tkn == ')':
+                while len(stack) > 0 and stack[-1] != '(':
+                    onp.append(stack.pop())
+                stack.pop()
+            else:
+                onp.append(tkn)
 
-        # TODO with a for or reduce
-        index = self.bal(expression, '>')
+        while len(stack) > 0:
+            onp.append(stack.pop())
 
-        if index >= 0:
-            return self.convert_to_onp(expression[:index]) + self.convert_to_onp(expression[index + 1:]) \
-                   + expression[index]
-
-        index = self.bal(expression, '|&/')
-
-        if index >= 0:
-            return self.convert_to_onp(expression[:index]) + self.convert_to_onp(expression[index + 1:]) \
-                   + expression[index]
-
-        index = self.bal(expression, '^')
-
-        if index >= 0:
-            return self.convert_to_onp(expression[:index]) + self.convert_to_onp(expression[index + 1:]) \
-                   + expression[index]
-
-        return expression
+        return functools.reduce(lambda x, y: x + y, onp)
 
 
 if __name__ == '__main__':
-    a = Expression('')
+    print(bool('1'))
+    print(bool('0'))
+    print(bool(1) and bool(0))
