@@ -1,5 +1,6 @@
 from string import ascii_lowercase
 import functools
+from itertools import combinations
 
 
 def generate_binary(n):
@@ -126,24 +127,68 @@ def expression_to_string(s):
     return result2[:-1]
 
 
-def filter_double_negations(expression):
-    filtered_expression = ''
-    a = 0
-    while a < len(expression)-1:
-        if expression[a] == '~' and expression[a + 1] == '~':
-            a += 1
-            pass
+def trim_expression(expression):
+    e = Expression('')
+    while len(expression) > 2 and expression[0] == '(' and expression[-1] == ')' and e.check_expression(expression):
+        expression = expression[1:-1]
+
+    return expression
+
+
+def reduce_tuple(expression):
+    expression_list = list(expression)
+    variables = get_variables(str.join('|', expression_list))
+    binary_generator = generate_binary(len(variables))
+    incorrect_binaries = []
+    some_expression = Expression('')
+    onp_expression = some_expression.convert_to_onp(str.join('|', expression_list))
+    onp_xor = some_expression.convert_to_onp(functools.reduce(lambda x, y: x + '^' + y, variables))
+
+    while True:
+        try:
+            x = binary_generator.__next__()
+            if calculate_onp(onp_expression, x) != calculate_onp(onp_xor, x):
+                incorrect_binaries.append(x)
+        except:
+            break
+
+    if len(incorrect_binaries) > 0:
+        return str.join('|', expression_list)
+
+    return '(' + functools.reduce(lambda x, y: x + '^' + y, variables) + ')'
+
+
+def reduce_xor(expression):
+    expressions_list = expression.split('|')
+    n = len(expressions_list)
+    for a in range(2, n + 1):
+        for expr in combinations(expressions_list, a):  # i feel really bad for this
+            reduced_sub_expression = reduce_tuple(expr)
+            prev_expression = str.join('|', expr)
+            if len(reduced_sub_expression) < len(prev_expression):
+                for var in list(expr):
+                    del expressions_list[expressions_list.index(var)]
+                expressions_list.append(reduced_sub_expression)
+                return reduce_xor(functools.reduce(lambda x, y: '|' + x + y + '|', expressions_list))
+
+    return expression
+
+
+def reduce_brackets(expression):
+    expression_list = expression.split('|')
+    if len(expression_list) == 1:
+        return trim_expression(expression_list[0])
+
+    reduced_expressions = []
+    for some in expression_list:
+        if len(some) <= 4:
+            # we are sure that there will be 2 brackets + we want 1 variable (or variable + negation)
+            reduced_expressions.append(trim_expression(some))
         else:
-            filtered_expression += expression[a]
-        a += 1
+            reduced_expressions.append(some)
 
-    if expression[-2] == '~' and expression[-1] == '~':
-        return filtered_expression
-    return filtered_expression + expression[-1]
+    return str.join('|', reduced_expressions)
 
-# def reduce_xor(expression):
-#     expressions_list = expression.split('|')
-#
 
 def reduce_logical_expression(expression):
     expression_object = Expression(expression)
@@ -151,7 +196,18 @@ def reduce_logical_expression(expression):
     if not expression_object.check_expression():
         return 'ERROR'
 
-    return expression_object.generate_general_from()
+    expression_in_general_form = expression_object.generate_general_form()
+    expression_with_xor = reduce_brackets(reduce_xor(expression_in_general_form))
+
+    if len(expression_with_xor) < len(expression):
+        return expression_with_xor
+
+    e = reduce_brackets(expression_in_general_form)
+
+    if len(e) < len(expression):
+        return e
+
+    return reduce_brackets(expression)
 
 
 class Expression:
@@ -245,7 +301,7 @@ class Expression:
 
         return functools.reduce(lambda x, y: x + y, onp)
 
-    def generate_general_from(self, expression=''):
+    def generate_general_form(self, expression=''):
         if not expression:
             expression = self.expression
 
@@ -253,12 +309,10 @@ class Expression:
         correct_binaries = []
         generator = generate_binary(n)
         current_expression = self.convert_to_onp(expression)
-        # print(current_expression)
 
         while True:
             try:
                 x = generator.__next__()
-                # print(str(calculate_onp(current_expression,x)) + '  ' + x)
                 if calculate_onp(current_expression, x):
                     correct_binaries.append(x)
             except:
@@ -271,5 +325,11 @@ class Expression:
 
 
 if __name__ == '__main__':
-    exp = '(a&~b)|(~a&b)'
-    print(exp.split('|'))
+    x = None
+
+    while not x:
+        x = input('')
+        if x:
+            print(reduce_logical_expression(x))
+        else:
+            break

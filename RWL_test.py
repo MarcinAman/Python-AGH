@@ -52,15 +52,15 @@ class CheckingValues(unittest.TestCase):
 
     def test_reduce(self):
         self.assertEqual(RWL.reduce_logical_expression('a<(b&c)'), 'ERROR')
-        # self.assertEqual(RWL.reduce_logical_expression('(a|b)|(c|a|b)'), '(a)|(b)|(c)')
-        self.assertEqual(RWL.reduce_logical_expression('~(~a|~b)'), '(a&b)')
-        self.assertEqual(RWL.reduce_logical_expression('~(~a)'), '(a)')
-        self.assertEqual(RWL.reduce_logical_expression('(p/q)/(p/q)'), '(a&b)')
-        # self.assertEqual(RWL.reduce_logical_expression('(a&~b)|(~a&b)'), '(a^b)')
+        # self.assertEqual(RWL.reduce_logical_expression('(a|b)|(c|a|b)'), 'a|b|c')
+        self.assertEqual(RWL.reduce_logical_expression('~(~a|~b)'), 'a&b')
+        self.assertEqual(RWL.reduce_logical_expression('~(~a)'), 'a')
+        self.assertEqual(RWL.reduce_logical_expression('(p/q)/(p/q)'), 'a&b')
+        self.assertEqual(RWL.reduce_logical_expression('(a&~b)|(~a&b)'), 'a^b')
         self.assertEqual(RWL.reduce_logical_expression('a|~a&(b|~b)'), 'T')
 
     def test_some(self):
-        self.assertEqual(RWL.calculate_onp('a~b~|~', '00'), False)
+        self.assertEqual(RWL.reduce_xor('(a&~b)|(~a&b)'), '(a^b)')
 
 
 if __name__ == '__main__':
