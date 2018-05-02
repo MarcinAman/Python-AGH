@@ -4,6 +4,12 @@ from itertools import combinations
 
 
 def generate_binary(n):
+    """
+    Function returns generator with binary sequences of a set length
+
+    :param n: length of a binary sequence
+    :return: generator with binary sequence
+    """
     if n == 0:
         yield ""
     else:
@@ -31,6 +37,13 @@ def replace_mapping(zipped_list, x):
 
 
 def get_variables(expression):
+    """
+    Functions filters the expression for variables and returns them
+    As a variable we mean any lower case character
+
+    :param expression: expression to search in
+    :return: list with variables from expression
+    """
     variables = []
     for variable in expression:
         if variable in ascii_lowercase and variable not in variables:
@@ -40,6 +53,14 @@ def get_variables(expression):
 
 
 def calculate_onp(expression, values):
+    """
+    Function calculates a value of an expression in reverse polish notation
+    :param expression: Expression in RPN given as a string.
+    :param values: binary sequence with values to be put in coresponding positions. Also string
+    :return: Bool value of an expression
+    Warning: function will only work on correct RNP expression and will not return any warnings in case of errors
+    """
+
     zipped_list = list(zip(get_variables(expression), list(values)))
     expression = list(map(lambda x: replace_mapping(zipped_list, x), expression))
 
@@ -73,6 +94,12 @@ def is_associative(tkn, associativity_type):
 
 
 def concat(s1, s2):
+    """
+    Helper function to reduce expressions
+    :param s1: Sthing we can iterate over with binary sequence and '_'
+    :param s2: Sthing we can iterate over with binary sequence and '_'
+    :return: Merged version of input, when certain bits are different this place is being replaced by '_'
+    """
     w = ""
     lz = 0
     for z1, z2 in zip(s1, s2):
@@ -88,7 +115,12 @@ def concat(s1, s2):
     return False
 
 
-def reduce_(s):  # s = set
+def reduce_(s):
+    """
+    Main reduce function
+    :param s: Set with values
+    :return: reduced set
+    """
     result = set()
     b2 = False
 
@@ -109,6 +141,11 @@ def reduce_(s):  # s = set
 
 
 def expression_to_string(s):
+    """
+    Helper function to change a reduced set to human-readable form
+    :param s: Set with values
+    :return: String made from input in pattern: (expression)|(expression)|(expression) or T (if expression is tautology)
+    """
     result2 = ""
     for e1 in s:
         result = ""
@@ -128,6 +165,11 @@ def expression_to_string(s):
 
 
 def trim_expression(expression):
+    """
+    Basic expression trimming
+    :param expression: takes an expression which in most cases matches a pattern: (expression) and trims brackets
+    :return: expression with trimmed brackets
+    """
     e = Expression('')
     while len(expression) > 2 and expression[0] == '(' and expression[-1] == ')' and e.check_expression(expression):
         expression = expression[1:-1]
@@ -136,6 +178,12 @@ def trim_expression(expression):
 
 
 def reduce_tuple(expression):
+    """
+    Function reduces a tuple of string expressions
+    :param expression: tuple containing expressions. We assume that they do not contain '|'
+    since in this case they are a product of QuineMcCluskey algorithm
+    :return: String containing reduced expression or the input one if further reduction was not successful
+    """
     expression_list = list(expression)
     variables = get_variables(str.join('|', expression_list))
     binary_generator = generate_binary(len(variables))
@@ -159,6 +207,12 @@ def reduce_tuple(expression):
 
 
 def reduce_xor(expression):
+    """
+    Specific function to reduce xor expressions. It generates combinations of k elements in len(variables)
+    where k is in range from 2 to len(variables). It checks whether it is not the same as var1 xor var2 xor var3 etc
+    :param expression: String expression to be reduced. We assume that it matches a pattern: (expr1)|(expr2)|(expr3) ...
+    :return: reduced expression in string form or input one if further reduction was not possible
+    """
     expressions_list = expression.split('|')
     n = len(expressions_list)
     for a in range(2, n + 1):
@@ -175,6 +229,13 @@ def reduce_xor(expression):
 
 
 def reduce_brackets(expression):
+    """
+    Function that reduces unessesary brackets. It eliminates situations where between two | there is a expression that doesnt need them
+    example:
+    (expr1)|(a)|(expr2) will be evaluated to: (expr1)|a|(expr2)
+    :param expression: string expression in form (expr1)|(expr2)|(expr3)
+    :return: reduced expression
+    """
     expression_list = expression.split('|')
     if len(expression_list) == 1:
         return trim_expression(expression_list[0])
@@ -191,6 +252,12 @@ def reduce_brackets(expression):
 
 
 def reduce_logical_expression(expression):
+    """
+    Main function that is responsible for driving program.
+    It calls functions to check if expression is correct and then reduces expression
+    :param expression: String expression to be reduced
+    :return: reduced expression or ERROR if it is not correct
+    """
     expression_object = Expression(expression)
 
     if not expression_object.check_expression():
@@ -211,6 +278,13 @@ def reduce_logical_expression(expression):
 
 
 class Expression:
+    """
+    Class designed to handle most of expression operations.
+    It contains map with bindings:
+    <operator> -> (priority,arguments_number)
+
+    Also string with correct signs and expression itself
+    """
     def __init__(self, expression):
         self.general_form = ''
         self.correctSigns = '~^&|/>()TF' + ascii_lowercase
@@ -219,6 +293,11 @@ class Expression:
                           '>': (1, 2)}  # <operator> -> (priority,arguments_number)
 
     def check_if_brackets_are_correct(self, expression=''):
+        """
+        Helper function to determine whether brackets are placed correctly
+        :param expression: expression in String form
+        :return: Bool result of brackets checking
+        """
         if not expression:
             expression = self.expression
         brackets = 0
@@ -235,6 +314,11 @@ class Expression:
         return False
 
     def check_if_signs_are_correct(self, expression=''):
+        """
+        Simple filter function that checks if expression contains correct signs and is semantically correct
+        :param expression: String expression to be checked
+        :return: Bool result
+        """
         if not expression:
             expression = self.expression
 
@@ -265,12 +349,24 @@ class Expression:
         return not state
 
     def check_expression(self, expression=''):
+        """
+        Higher level interface for checking expression
+        It calls methods to determine whether expression is correct semantically, in terms of brackets and signs
+        :param expression: String expression to check
+        :return: Bool result
+        """
         if not expression:
             expression = self.expression
 
         return self.check_if_signs_are_correct(expression) and self.check_if_brackets_are_correct(expression)
 
     def convert_to_onp(self, expression=''):
+        """
+        Function converts an infix expression to RPN
+        Warning: it doesnt check whether this expression is correct
+        :param expression: Infix expression
+        :return: RPN expression
+        """
         if not expression:
             expression = self.expression
 
@@ -302,6 +398,14 @@ class Expression:
         return functools.reduce(lambda x, y: x + y, onp)
 
     def generate_general_form(self, expression=''):
+        """
+        Function generates general form from infix expression
+        It uses QuineMcCluskey algorithm
+
+        Result matches a pattern: (expression1)|(expression2)|(expression3)...
+        :param expression: Infix expression as a String
+        :return: String infix expression evaluated using QuineMcCluskey
+        """
         if not expression:
             expression = self.expression
 
